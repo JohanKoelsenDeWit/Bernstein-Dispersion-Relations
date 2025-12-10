@@ -8,3 +8,7 @@ All equations are written in the paper "An introduction to perpendicularly propa
 Root-finding.py uses the root-finding scheme to compute the f(k) dispersion branches.
 Expansion-method.py uses the estimative dispersion relation.
 EVP-method.py uses the eigenvalue problem formulation.
+
+Lastly, Combined-methods.py compares the three methods for the fundamental electron Bernstein branch:
+<img width="2720" height="1320" alt="CombinedMethods" src="https://github.com/user-attachments/assets/de19068c-4801-4ef9-a2e9-63ba337b99fe" />
+
