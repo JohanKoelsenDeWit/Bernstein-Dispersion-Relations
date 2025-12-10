@@ -6,3 +6,5 @@ Three different methods are provided: A root-finding method based on Newton-Raph
 All equations are written in the paper "An introduction to perpendicularly propagating Bernstein waves".
 
 Root-finding.py uses the root-finding scheme to compute the f(k) dispersion branches.
+Expansion-method.py uses the estimative dispersion relation.
+EVP-method.py uses the eigenvalue problem formulation.
