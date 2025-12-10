@@ -1,14 +1,14 @@
 """
 Author: J. K. de Wit
 
-This code computes Bernstein-wave spectra in a homogeneous plasma (electrostatic,
+This code computes Bernstein wave dispersion relations in a homogeneous plasma (electrostatic,
 perpendicular limit) using a linear eigenvalue problem in ω. For each species ξ
 and harmonic n=1..Nξ, two auxiliary variables u_{ξn}^{(+)} and u_{ξn}^{(-)} are
 introduced, yielding the EVP:
 
 (D + g e^T) X = ω X
 
-whose eigenvalues approximate the Bernstein harmonics.
+whose eigenvalues approximate ω for a given wavenumber.
 """
 
 import numpy as np
