@@ -1,14 +1,15 @@
 """
 Author: J. K. de Wit
 
-This code computes Bernstein wave dispersion relations in a homogeneous plasma (electrostatic,
-perpendicular limit) using a linear eigenvalue problem in ω. For each species ξ
-and harmonic n=1..Nξ, two auxiliary variables u_{ξn}^{(+)} and u_{ξn}^{(-)} are
+This code computes Bernstein wave dispersion relations in a homogeneous plasma
+(electrostatic, perpendicular limit) using a linear eigenvalue problem in ω².
+For each species ξ and harmonic n=1..Nξ, one auxiliary variable u_{ξn} is
 introduced, yielding the EVP:
 
-(D + g e^T) X = ω X
+(W + A) X = ω² X
 
-whose eigenvalues approximate ω for a given wavenumber.
+whose eigenvalues approximate ω² for a given wavenumber.
+
 """
 
 import numpy as np
@@ -16,7 +17,7 @@ import scipy.constants as sc
 from scipy.special import ive
 from numpy.linalg import eig
 import matplotlib.pyplot as plt
-from math import factorial
+
 
 # Helper functions for characteristic frequencies and velocities.
 def wp2_f(n_m3, q_C, m_kg):
@@ -30,7 +31,8 @@ def wc_abs_f(B_T, q_C, m_kg):
 def vth_f(T_eV, m_kg):
     return np.sqrt(2.0 * T_eV * sc.e / m_kg)
 
-# Computes the EVP
+
+# Computes the EVP in ω²
 def ebw_evp_multispecies(B_T, species, k_perp, harmonics):
     if isinstance(harmonics, int):
         Nmap = {sp["name"]: int(harmonics) for sp in species}
@@ -45,10 +47,9 @@ def ebw_evp_multispecies(B_T, species, k_perp, harmonics):
             pairs.append((sp, n))
 
     M = len(pairs)
-    dim = 2 * M
 
-    Ddiag = np.zeros(dim, dtype=np.float64)
-    g = np.zeros(dim, dtype=np.float64)
+    Wdiag = np.zeros(M, dtype=np.float64)
+    a_vec = np.zeros(M, dtype=np.float64)
 
     k = float(k_perp)
     for j, (sp, n) in enumerate(pairs):
@@ -58,26 +59,32 @@ def ebw_evp_multispecies(B_T, species, k_perp, harmonics):
         m_kg = float(sp["m_kg"])
 
         wp2 = wp2_f(n_m3, q_C, m_kg)
-        Omega = wc_abs_f(B_T, q_C, m_kg)
+        wc = wc_abs_f(B_T, q_C, m_kg)
         vth = vth_f(T_eV, m_kg)
-        rhoL = vth / Omega if Omega > 0.0 else np.inf
+
+        rhoL = vth / wc if wc > 0.0 else np.inf
         lam = 0.5 * (k * rhoL) ** 2
 
-        a = (wp2 / Omega) * n * ive(int(n), float(lam)) / float(lam)
+        Wdiag[j] = (float(n) * wc) ** 2
 
-        ip = 2 * j
-        im = 2 * j + 1
+        if lam > 0.0 and np.isfinite(lam):
+            a_vec[j] = 2.0 * wp2 * (n ** 2) * ive(n, lam) / lam
+        else:
+            a_vec[j] = 0.0
 
-        Ddiag[ip] = +float(n) * Omega
-        Ddiag[im] = -float(n) * Omega
-        g[ip] = +a
-        g[im] = -a
+    W = np.diag(Wdiag)
+    A = np.outer(a_vec, np.ones(M, dtype=np.float64))
 
-    Mmat = np.diag(Ddiag) + np.outer(g, np.ones(dim, dtype=np.float64))
-    w, V = eig(Mmat)
+    Mmat = W + A
+    w2, V = eig(Mmat)
 
-    meta = {"pairs": [(sp["name"], int(n)) for (sp, n) in pairs], "Ddiag": Ddiag, "g": g}
-    return w, V, meta
+    meta = {
+        "pairs": [(sp["name"], int(n)) for (sp, n) in pairs],
+        "Wdiag": Wdiag,
+        "a_vec": a_vec,
+    }
+    return w2, V, meta
+
 
 # The main function where the plasma parameters are defined.
 def main():
@@ -92,7 +99,7 @@ def main():
         {"name": "i", "n_m3": ni_m3, "T_eV": Ti_eV, "q_C": +sc.e, "m_kg": sc.m_p},
     ]
 
-    harmonics = {"e": 6, "i": 6}
+    harmonics = {"e": 6, "i": 25}
 
     k_min = 10
     k_max = 2.0e4
@@ -102,10 +109,14 @@ def main():
     fig, ax = plt.subplots(figsize=(6.6, 3.2))
 
     for k in k_list:
-        w, V, meta = ebw_evp_multispecies(B_T, species, k, harmonics)
-        f = np.real(w) / (2.0 * np.pi)
-        m = np.isfinite(f) & (f > 0.0)
-        ax.plot(np.full(np.count_nonzero(m), k), f[m] / 1e9, ".", ms=2.5, color="k")
+        w2, V, meta = ebw_evp_multispecies(B_T, species, k, harmonics)
+
+        # Keep only real and positive roots
+        w2_real = np.real(w2)
+        m = np.isfinite(w2_real) & (w2_real > 0.0)
+
+        f = np.sqrt(w2_real[m]) / (2.0 * np.pi)
+        ax.plot(np.full(np.count_nonzero(m), k), f / 1e9, ".", ms=2.5, color="k")
 
     ax.grid(True)
     ax.set_xlabel("k [1/m]")
